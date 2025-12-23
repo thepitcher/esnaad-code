@@ -22,18 +22,29 @@
    - `bash` - Execute shell commands (works with CMD/PowerShell on Windows)
    - Timeout support and error handling
 
-3. **MCP (Model Context Protocol) Support**
+3. **Git Operations** (NEW)
+   - `git_status` - Check repository status
+   - `git_diff` - View file changes (staged/unstaged)
+   - `git_log` - View commit history with filtering
+   - `git_add` - Stage files for commit
+   - `git_commit` - Create commits
+   - `git_push` - Push to remote repository
+   - `git_pull` - Pull from remote repository
+   - `git_branch` - Manage branches (list/create/delete)
+   - `git_checkout` - Switch branches or restore files
+
+4. **MCP (Model Context Protocol) Support**
    - Client implementation to connect to MCP servers
    - Automatic tool discovery from connected servers
    - Support for multiple MCP servers simultaneously
 
-4. **OpenAI Integration**
+5. **OpenAI Integration**
    - Supports GPT-4, GPT-3.5, and other OpenAI models
    - Configurable via environment variables
    - Tool calling with automatic iteration
    - Conversation history management
 
-5. **Interactive CLI**
+6. **Interactive CLI**
    - REPL interface with colored output (using chalk)
    - Command system (`/help`, `/clear`, `/history`, `/exit`)
    - Continuous loop that runs until user exits
@@ -52,6 +63,7 @@ esnaad-code/
 │   ├── tools/
 │   │   ├── file-tools.ts # File operations (read, write, edit, glob, grep)
 │   │   ├── bash-tool.ts  # Shell command execution
+│   │   ├── git-tool.ts   # Git operations (status, diff, log, commit, push, etc.)
 │   │   └── index.ts      # Tool registry and OpenAI format conversion
 │   └── mcp/
 │       └── client.ts     # MCP client for external tools

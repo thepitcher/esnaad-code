@@ -215,6 +215,18 @@ esnaad --directory /path/to/project    # Set working directory
 
 - **bash**: Execute shell commands with timeout support
 
+### Git Operations
+
+- **git_status**: Check repository status (staged, unstaged, untracked files)
+- **git_diff**: View changes in files (unstaged or staged)
+- **git_log**: View commit history with filtering options
+- **git_add**: Stage files for commit
+- **git_commit**: Create commits with messages
+- **git_push**: Push commits to remote repository
+- **git_pull**: Pull changes from remote repository
+- **git_branch**: List, create, or delete branches
+- **git_checkout**: Switch branches or restore files
+
 ### MCP Tools
 
 When MCP servers are configured, their tools become available with the prefix `mcp_<servername>_<toolname>`.
@@ -255,6 +267,27 @@ The agent will:
 2. Analyze failures
 3. Use `read` and `edit` to fix issues
 4. Re-run tests to confirm
+
+### Example 4: Git Workflow
+
+```
+esnaad> check git status, show me what changed, and commit the changes
+```
+
+The agent will:
+1. Use `git_status` to see the current state
+2. Use `git_diff` to show changes
+3. Use `git_add` to stage files
+4. Use `git_commit` to create a commit
+5. Confirm the commit was created
+
+```
+esnaad> show me the last 5 commits and push to origin
+```
+
+The agent will:
+1. Use `git_log` to display recent commits
+2. Use `git_push` to push to remote repository
 
 ## Architecture
 
