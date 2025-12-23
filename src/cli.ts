@@ -49,7 +49,7 @@ program
       const rl = createInterface({
         input: process.stdin,
         output: process.stdout,
-        prompt: chalk.green('esnaad> '),
+        prompt: chalk.green('esnaad code> '),
         terminal: true  // Explicitly enable terminal mode for Windows
       });
 
@@ -83,7 +83,7 @@ program
 
         // Handle commands
         if (input.startsWith('/')) {
-          handleCommand(input, agent, rl, mcpClient);
+          await handleCommand(input, agent, rl, mcpClient);
           return;
         }
 
@@ -119,24 +119,26 @@ program
     }
   });
 
-function handleCommand(
+async function handleCommand(
   input: string,
   agent: Agent,
   rl: any,
   mcpClient: MCPClient
-): void {
+): Promise<void> {
   const parts = input.slice(1).split(' ');
   const command = parts[0];
 
   switch (command) {
     case 'help':
       console.log(chalk.cyan('\nAvailable commands:'));
-      console.log(chalk.white('  /help     - Show this help message'));
-      console.log(chalk.white('  /clear    - Clear conversation history'));
-      console.log(chalk.white('  /history  - Show conversation history'));
-      console.log(chalk.white('  /plan     - Toggle or check plan mode status'));
-      console.log(chalk.white('  /exit     - Exit Esnaad Code'));
-      console.log(chalk.white('  /quit     - Exit Esnaad Code\n'));
+      console.log(chalk.white('  /help        - Show this help message'));
+      console.log(chalk.white('  /clear       - Clear conversation history'));
+      console.log(chalk.white('  /history     - Show conversation history'));
+      console.log(chalk.white('  /plan        - Toggle or check plan mode status'));
+      console.log(chalk.white('  /todos       - Show current task list'));
+      console.log(chalk.white('  /todos clear - Clear the task list'));
+      console.log(chalk.white('  /exit        - Exit Esnaad Code'));
+      console.log(chalk.white('  /quit        - Exit Esnaad Code\n'));
       break;
 
     case 'clear':
@@ -167,6 +169,22 @@ function handleCommand(
         console.log(chalk.cyan(`\nPlan mode is currently: ${planStatus ? chalk.green('ON') : chalk.yellow('OFF')}`));
         console.log(chalk.gray('  /plan on  - Enable plan mode (confirm destructive operations)'));
         console.log(chalk.gray('  /plan off - Disable plan mode (execute all immediately)\n'));
+      }
+      break;
+
+    case 'todos':
+      const { getTodoList, formatTodoList, clearTodoList } = await import('./tools/todo-tool.js');
+      const todosSubCmd = parts[1];
+      if (todosSubCmd === 'clear') {
+        clearTodoList();
+        console.log(chalk.yellow('\n✓ Todo list cleared\n'));
+      } else {
+        const todos = getTodoList();
+        if (todos.length === 0) {
+          console.log(chalk.gray('\nNo tasks in the todo list.\n'));
+        } else {
+          console.log('\n' + formatTodoList(todos) + '\n');
+        }
       }
       break;
 

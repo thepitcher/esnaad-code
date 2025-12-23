@@ -2,6 +2,7 @@ import { Tool } from '../types.js';
 import { readTool, writeTool, editTool, globTool, grepTool } from './file-tools.js';
 import { bashTool } from './bash-tool.js';
 import { gitTools } from './git-tool.js';
+import { todoWriteTool } from './todo-tool.js';
 
 export const builtinTools: Tool[] = [
   readTool,
@@ -10,7 +11,8 @@ export const builtinTools: Tool[] = [
   globTool,
   grepTool,
   bashTool,
-  ...gitTools  // Add all 9 git tools
+  ...gitTools,  // Add all 9 git tools
+  todoWriteTool
 ];
 
 export function convertToolToOpenAIFormat(tool: Tool) {
