@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import https from 'https';
 import { AgentConfig, Message, Tool } from './types.js';
 import { builtinTools, convertToolToOpenAIFormat } from './tools/index.js';
 import { MCPClient } from './mcp/client.js';
@@ -13,10 +14,18 @@ export class Agent {
   constructor(config: AgentConfig, mcpClient: MCPClient) {
     this.config = config;
     this.mcpClient = mcpClient;
+
+    // Configure HTTPS agent for SSL certificate handling
+    const httpsAgent = new https.Agent({
+      // Check if SSL verification should be disabled (for self-signed certs)
+      rejectUnauthorized: process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0'
+    });
+
     this.openai = new OpenAI({
       apiKey: config.apiKey,
       baseURL: config.apiBase,
-      organization: config.orgId
+      organization: config.orgId,
+      httpAgent: httpsAgent
     });
 
     // Register builtin tools
