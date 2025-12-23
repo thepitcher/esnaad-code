@@ -63,6 +63,10 @@ program
       console.log(chalk.magenta('[DEBUG] stdin.isTTY:', process.stdin.isTTY));
       console.log(chalk.magenta('[DEBUG] stdout.isTTY:', process.stdout.isTTY));
 
+      // Keep stdin in flowing mode (important for Windows)
+      process.stdin.resume();
+      console.log(chalk.magenta('[DEBUG] Called stdin.resume()'));
+
       // Monitor stdin close
       process.stdin.on('end', () => {
         console.log(chalk.red('\n[DEBUG] stdin END event fired!'));
@@ -109,21 +113,32 @@ program
 
         // Process user message
         console.log(chalk.magenta('[DEBUG] Processing message...'));
-        const spinner = ora('Processing...').start();
+        // NO SPINNER - testing if ora breaks stdin on Windows
+        console.log(chalk.yellow('Processing (no spinner)...'));
         try {
           const response = await agent.chat(input);
-          spinner.stop();
+          console.log(chalk.magenta('[DEBUG] Got response, displaying...'));
           console.log(chalk.blue('\n' + response + '\n'));
           console.log(chalk.gray('─'.repeat(60)));
         } catch (error: any) {
-          spinner.stop();
           console.error(chalk.red(`\nError: ${error.message}\n`));
           console.log(chalk.gray('─'.repeat(60)));
         } finally {
           console.log(chalk.magenta('[DEBUG] About to show prompt again'));
+
+          // Check stdin state before prompting
+          console.log(chalk.magenta('[DEBUG] stdin.readable:', process.stdin.readable));
+          console.log(chalk.magenta('[DEBUG] stdin.readableEnded:', process.stdin.readableEnded));
+          console.log(chalk.magenta('[DEBUG] stdin.destroyed:', process.stdin.destroyed));
+
           // Always show prompt again to continue the loop
           rl.prompt();
           console.log(chalk.magenta('[DEBUG] Prompt shown, waiting for next input'));
+
+          // Force a pause to keep stdin active
+          setImmediate(() => {
+            console.log(chalk.magenta('[DEBUG] setImmediate callback executed'));
+          });
         }
       });
 
