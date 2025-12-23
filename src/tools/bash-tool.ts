@@ -21,6 +21,7 @@ export const bashTool: Tool = {
     },
     required: ['command']
   },
+  requiresConfirmation: true,
   execute: async (params: { command: string; timeout?: number }) => {
     try {
       const timeout = params.timeout || 120000;

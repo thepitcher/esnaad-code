@@ -48,6 +48,7 @@ export const writeTool: Tool = {
     },
     required: ['file_path', 'content']
   },
+  requiresConfirmation: true,
   execute: async (params: { file_path: string; content: string }) => {
     try {
       writeFileSync(params.file_path, params.content, 'utf-8');
@@ -83,6 +84,7 @@ export const editTool: Tool = {
     },
     required: ['file_path', 'old_string', 'new_string']
   },
+  requiresConfirmation: true,
   execute: async (params: {
     file_path: string;
     old_string: string;

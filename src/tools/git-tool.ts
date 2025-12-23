@@ -143,6 +143,7 @@ export const gitAddTool: Tool = {
     },
     required: ['files']
   },
+  requiresConfirmation: true,
   execute: async (params: { files: string }) => {
     try {
       const cmd = `git add ${params.files}`;
@@ -174,6 +175,7 @@ export const gitCommitTool: Tool = {
     },
     required: ['message']
   },
+  requiresConfirmation: true,
   execute: async (params: { message: string; amend?: boolean }) => {
     try {
       let cmd = 'git commit';
@@ -221,6 +223,7 @@ export const gitPushTool: Tool = {
       }
     }
   },
+  requiresConfirmation: true,
   execute: async (params: { remote?: string; branch?: string; set_upstream?: boolean }) => {
     try {
       const remote = params.remote || 'origin';
@@ -268,6 +271,7 @@ export const gitPullTool: Tool = {
       }
     }
   },
+  requiresConfirmation: true,
   execute: async (params: { remote?: string; branch?: string }) => {
     try {
       const remote = params.remote || 'origin';
@@ -315,6 +319,7 @@ export const gitBranchTool: Tool = {
     },
     required: ['action']
   },
+  requiresConfirmation: true,
   execute: async (params: { action: string; branch_name?: string; force?: boolean }) => {
     try {
       let cmd = 'git branch';
@@ -363,6 +368,7 @@ export const gitCheckoutTool: Tool = {
     },
     required: ['target']
   },
+  requiresConfirmation: true,
   execute: async (params: { target: string; create_new?: boolean }) => {
     try {
       let cmd = 'git checkout';

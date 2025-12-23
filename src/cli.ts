@@ -45,9 +45,6 @@ program
         spinner.succeed('MCP servers connected');
       }
 
-      // Initialize agent
-      const agent = new Agent(config.openai, mcpClient);
-
       // Create readline interface
       const rl = createInterface({
         input: process.stdin,
@@ -56,7 +53,16 @@ program
         terminal: true  // Explicitly enable terminal mode for Windows
       });
 
+      // Initialize agent with plan mode enabled by default
+      const agent = new Agent(
+        config.openai,
+        mcpClient,
+        { enabled: true, autoApproveReadOnly: true },
+        rl
+      );
+
       console.log(chalk.yellow('Type your request or /help for commands'));
+      console.log(chalk.green('Plan mode: ON') + chalk.gray(' - destructive operations will require confirmation'));
       console.log(chalk.gray('Press Ctrl+C or type /exit to quit\n'));
 
       rl.prompt();
@@ -128,6 +134,7 @@ function handleCommand(
       console.log(chalk.white('  /help     - Show this help message'));
       console.log(chalk.white('  /clear    - Clear conversation history'));
       console.log(chalk.white('  /history  - Show conversation history'));
+      console.log(chalk.white('  /plan     - Toggle or check plan mode status'));
       console.log(chalk.white('  /exit     - Exit Esnaad Code'));
       console.log(chalk.white('  /quit     - Exit Esnaad Code\n'));
       break;
@@ -145,6 +152,22 @@ function handleCommand(
         console.log(chalk.gray(`[${idx}] ${msg.role}: ${msg.content?.substring(0, 100)}...`));
       });
       console.log();
+      break;
+
+    case 'plan':
+      const subCommand = parts[1];
+      if (subCommand === 'on') {
+        agent.setPlanMode(true);
+        console.log(chalk.green('\n✓ Plan mode enabled - destructive operations will require confirmation\n'));
+      } else if (subCommand === 'off') {
+        agent.setPlanMode(false);
+        console.log(chalk.yellow('\n✓ Plan mode disabled - all operations will execute immediately\n'));
+      } else {
+        const planStatus = agent.isPlanModeEnabled();
+        console.log(chalk.cyan(`\nPlan mode is currently: ${planStatus ? chalk.green('ON') : chalk.yellow('OFF')}`));
+        console.log(chalk.gray('  /plan on  - Enable plan mode (confirm destructive operations)'));
+        console.log(chalk.gray('  /plan off - Disable plan mode (execute all immediately)\n'));
+      }
       break;
 
     case 'exit':

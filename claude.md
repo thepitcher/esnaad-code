@@ -22,6 +22,7 @@ Esnaad Code is a command-line AI coding assistant similar to Claude Code, but po
 3. **MCP Support**: Model Context Protocol for extensibility
 4. **OpenAI Integration**: GPT-4, GPT-3.5, and compatible models
 5. **Continuous Loop**: Interactive REPL that runs until user exits
+6. **Plan Mode**: Confirmation required for destructive operations (write, edit, bash, git mutations)
 
 ### Technology Stack
 - **Language**: TypeScript/Node.js
@@ -33,13 +34,15 @@ Esnaad Code is a command-line AI coding assistant similar to Claude Code, but po
 ### Architecture
 ```
 src/
-├── agent.ts          # Core agent with OpenAI integration
+├── agent.ts          # Core agent with OpenAI integration + plan mode
 ├── cli.ts            # Interactive CLI with continuous loop
 ├── config.ts         # Configuration management
 ├── types.ts          # TypeScript definitions
+├── plan-review.ts    # Plan mode UI for reviewing/approving operations
 ├── tools/
-│   ├── file-tools.ts # Read, write, edit, glob, grep
-│   ├── bash-tool.ts  # Shell command execution
+│   ├── file-tools.ts # Read, write, edit, glob, grep (w/ requiresConfirmation)
+│   ├── bash-tool.ts  # Shell command execution (w/ requiresConfirmation)
+│   ├── git-tool.ts   # Git operations (status, diff, log, commit, push, etc.)
 │   └── index.ts      # Tool registry
 └── mcp/
     └── client.ts     # MCP client for external tools
@@ -69,6 +72,28 @@ The CLI runs in a continuous loop using Node.js readline:
    ```
 
 Without both fixes, the program exits after the first response!
+
+#### Plan Mode Implementation
+The CLI includes a plan mode feature that requires user confirmation for destructive operations:
+
+**Tools requiring confirmation** (marked with `requiresConfirmation: true`):
+- `write`, `edit` (file modifications)
+- `bash` (shell commands)
+- `git_add`, `git_commit`, `git_push`, `git_pull`, `git_branch`, `git_checkout`
+
+**Tools that auto-execute** (read-only):
+- `read`, `glob`, `grep`
+- `git_status`, `git_diff`, `git_log`
+
+**User interaction**:
+- `y` - Accept all pending operations
+- `n` - Reject all operations
+- `s` - Step-by-step review with parameter editing option
+
+**Commands**:
+- `/plan` - Show current status
+- `/plan on` - Enable (default)
+- `/plan off` - Disable (auto-execute all)
 
 #### Windows Compatibility Considerations
 1. **Grep Tool**: Uses `rg` (ripgrep) - needs to be installed on Windows or provide fallback

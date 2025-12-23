@@ -1,8 +1,10 @@
 import OpenAI from 'openai';
 import https from 'https';
-import { AgentConfig, Message, Tool } from './types.js';
+import { Interface as ReadlineInterface } from 'readline';
+import { AgentConfig, Message, Tool, PendingOperation, PlanReviewResult, PlanModeConfig } from './types.js';
 import { builtinTools, convertToolToOpenAIFormat } from './tools/index.js';
 import { MCPClient } from './mcp/client.js';
+import { reviewPlan, formatOperationForDisplay } from './plan-review.js';
 
 export class Agent {
   private openai: OpenAI;
@@ -10,10 +12,19 @@ export class Agent {
   private tools: Map<string, Tool> = new Map();
   private messages: Message[] = [];
   private mcpClient: MCPClient;
+  private planModeConfig: PlanModeConfig;
+  private readline?: ReadlineInterface;
 
-  constructor(config: AgentConfig, mcpClient: MCPClient) {
+  constructor(
+    config: AgentConfig,
+    mcpClient: MCPClient,
+    planModeConfig?: PlanModeConfig,
+    readline?: ReadlineInterface
+  ) {
     this.config = config;
     this.mcpClient = mcpClient;
+    this.planModeConfig = planModeConfig || { enabled: true, autoApproveReadOnly: true };
+    this.readline = readline;
 
     // Configure HTTPS agent for SSL certificate handling
     const httpsAgent = new https.Agent({
@@ -117,39 +128,16 @@ Current working directory: ${process.cwd()}`
         return message.content || 'No response';
       }
 
-      // Execute tool calls
-      for (const toolCall of message.tool_calls) {
-        const tool = this.tools.get(toolCall.function.name);
-
-        if (!tool) {
-          this.messages.push({
-            role: 'tool',
-            tool_call_id: toolCall.id,
-            content: `Error: Tool ${toolCall.function.name} not found`
-          });
-          continue;
+      // Execute tool calls - with or without plan mode
+      if (this.planModeConfig.enabled && this.readline) {
+        // Plan mode: categorize tools and review destructive ones
+        const toolResults = await this.processToolCallsWithPlanMode(message.tool_calls);
+        for (const result of toolResults) {
+          this.messages.push(result);
         }
-
-        let params;
-        try {
-          params = JSON.parse(toolCall.function.arguments);
-        } catch (error) {
-          this.messages.push({
-            role: 'tool',
-            tool_call_id: toolCall.id,
-            content: `Error: Invalid JSON arguments`
-          });
-          continue;
-        }
-
-        console.log(`\n🔧 Executing: ${toolCall.function.name}`);
-        const result = await tool.execute(params);
-
-        this.messages.push({
-          role: 'tool',
-          tool_call_id: toolCall.id,
-          content: result
-        });
+      } else {
+        // Original behavior: execute all tools immediately
+        await this.executeAllToolCalls(message.tool_calls);
       }
     }
 
@@ -163,5 +151,200 @@ Current working directory: ${process.cwd()}`
   clearHistory(): void {
     // Keep only system message
     this.messages = this.messages.slice(0, 1);
+  }
+
+  /**
+   * Set plan mode enabled/disabled
+   */
+  setPlanMode(enabled: boolean): void {
+    this.planModeConfig.enabled = enabled;
+  }
+
+  /**
+   * Check if plan mode is enabled
+   */
+  isPlanModeEnabled(): boolean {
+    return this.planModeConfig.enabled;
+  }
+
+  /**
+   * Execute all tool calls without confirmation (original behavior)
+   */
+  private async executeAllToolCalls(toolCalls: any[]): Promise<void> {
+    for (const toolCall of toolCalls) {
+      const tool = this.tools.get(toolCall.function.name);
+
+      if (!tool) {
+        this.messages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: `Error: Tool ${toolCall.function.name} not found`
+        });
+        continue;
+      }
+
+      let params;
+      try {
+        params = JSON.parse(toolCall.function.arguments);
+      } catch (error) {
+        this.messages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: `Error: Invalid JSON arguments`
+        });
+        continue;
+      }
+
+      console.log(`\n🔧 Executing: ${toolCall.function.name}`);
+      const result = await tool.execute(params);
+
+      this.messages.push({
+        role: 'tool',
+        tool_call_id: toolCall.id,
+        content: result
+      });
+    }
+  }
+
+  /**
+   * Process tool calls with plan mode - categorize and review destructive operations
+   */
+  private async processToolCallsWithPlanMode(toolCalls: any[]): Promise<Message[]> {
+    const results: Message[] = [];
+    const pendingOperations: PendingOperation[] = [];
+    const autoExecuteOperations: Array<{ toolCall: any; tool: Tool; params: any }> = [];
+
+    // Phase 1: Categorize tool calls
+    for (const toolCall of toolCalls) {
+      const tool = this.tools.get(toolCall.function.name);
+
+      if (!tool) {
+        results.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: `Error: Tool ${toolCall.function.name} not found`
+        });
+        continue;
+      }
+
+      let params;
+      try {
+        params = JSON.parse(toolCall.function.arguments);
+      } catch (error) {
+        results.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: `Error: Invalid JSON arguments`
+        });
+        continue;
+      }
+
+      if (tool.requiresConfirmation) {
+        pendingOperations.push({
+          toolCallId: toolCall.id,
+          toolName: tool.name,
+          params,
+          displaySummary: formatOperationForDisplay({
+            toolCallId: toolCall.id,
+            toolName: tool.name,
+            params,
+            displaySummary: ''
+          })
+        });
+      } else {
+        autoExecuteOperations.push({ toolCall, tool, params });
+      }
+    }
+
+    // Phase 2: Auto-execute read-only operations
+    for (const { toolCall, tool, params } of autoExecuteOperations) {
+      console.log(`\n🔧 Auto-executing (read-only): ${tool.name}`);
+      const result = await tool.execute(params);
+      results.push({
+        role: 'tool',
+        tool_call_id: toolCall.id,
+        content: result
+      });
+    }
+
+    // Phase 3: Review destructive operations if any
+    if (pendingOperations.length > 0 && this.readline) {
+      const reviewResult = await reviewPlan(pendingOperations, this.readline);
+      const destructiveResults = await this.handleReviewResult(pendingOperations, reviewResult);
+      results.push(...destructiveResults);
+    }
+
+    return results;
+  }
+
+  /**
+   * Handle the user's review decision
+   */
+  private async handleReviewResult(
+    operations: PendingOperation[],
+    reviewResult: PlanReviewResult
+  ): Promise<Message[]> {
+    const results: Message[] = [];
+
+    switch (reviewResult.action) {
+      case 'accept_all':
+        // Execute all pending operations
+        for (const op of operations) {
+          const tool = this.tools.get(op.toolName)!;
+          console.log(`\n🔧 Executing (approved): ${op.toolName}`);
+          const result = await tool.execute(op.params);
+          results.push({
+            role: 'tool',
+            tool_call_id: op.toolCallId,
+            content: result
+          });
+        }
+        break;
+
+      case 'reject_all':
+        // Return rejection messages for all
+        for (const op of operations) {
+          results.push({
+            role: 'tool',
+            tool_call_id: op.toolCallId,
+            content: `Operation rejected by user: ${op.toolName}`
+          });
+        }
+        break;
+
+      case 'step_results':
+        // Process each step individually
+        for (const stepResult of reviewResult.results) {
+          const op = operations.find(o => o.toolCallId === stepResult.toolCallId)!;
+          const tool = this.tools.get(op.toolName)!;
+
+          if (stepResult.action === 'accept') {
+            console.log(`\n🔧 Executing (approved): ${op.toolName}`);
+            const result = await tool.execute(op.params);
+            results.push({
+              role: 'tool',
+              tool_call_id: op.toolCallId,
+              content: result
+            });
+          } else if (stepResult.action === 'edit') {
+            console.log(`\n🔧 Executing (edited): ${op.toolName}`);
+            const result = await tool.execute(stepResult.editedParams!);
+            results.push({
+              role: 'tool',
+              tool_call_id: op.toolCallId,
+              content: result
+            });
+          } else {
+            results.push({
+              role: 'tool',
+              tool_call_id: op.toolCallId,
+              content: `Operation rejected by user: ${op.toolName}`
+            });
+          }
+        }
+        break;
+    }
+
+    return results;
   }
 }

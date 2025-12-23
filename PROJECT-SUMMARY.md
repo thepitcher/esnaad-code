@@ -46,9 +46,19 @@
 
 6. **Interactive CLI**
    - REPL interface with colored output (using chalk)
-   - Command system (`/help`, `/clear`, `/history`, `/exit`)
+   - Command system (`/help`, `/clear`, `/history`, `/plan`, `/exit`)
    - Continuous loop that runs until user exits
    - Works correctly on Windows (after fixing critical bugs)
+
+7. **Plan Mode & Edit Acceptance** (NEW)
+   - User confirmation required for destructive operations
+   - Read-only tools auto-execute (read, glob, grep, git_status, git_diff, git_log)
+   - Destructive tools require approval (write, edit, bash, git_add, git_commit, git_push, git_pull, git_branch, git_checkout)
+   - Three review options:
+     - **y** - Accept all pending operations
+     - **n** - Reject all operations
+     - **s** - Step-by-step review with parameter editing
+   - Toggle with `/plan on` and `/plan off` commands
 
 ### Architecture
 
@@ -60,6 +70,7 @@ esnaad-code/
 │   ├── cli-debug.ts      # Debug version with extensive logging
 │   ├── config.ts         # Configuration management (.env + ~/.esnaad/config.json)
 │   ├── types.ts          # TypeScript type definitions
+│   ├── plan-review.ts    # Plan mode UI for reviewing/approving operations (NEW)
 │   ├── tools/
 │   │   ├── file-tools.ts # File operations (read, write, edit, glob, grep)
 │   │   ├── bash-tool.ts  # Shell command execution
@@ -218,6 +229,9 @@ esnaad> /exit
 - `/help` - Show available commands
 - `/clear` - Clear conversation history
 - `/history` - Show conversation history
+- `/plan` - Show plan mode status
+- `/plan on` - Enable plan mode (confirm destructive operations)
+- `/plan off` - Disable plan mode (auto-execute all)
 - `/exit` or `/quit` - Exit Esnaad Code
 - Ctrl+D - Also exits
 
@@ -307,6 +321,7 @@ Key commits in order:
 - MCP support functional
 - OpenAI integration working
 - Command system working
+- Plan mode with edit acceptance working
 
 ✅ **Well Documented**
 - README.md - Main documentation
@@ -339,8 +354,9 @@ From claude.md:
 3. **README.md** - User-facing documentation
 4. **WINDOWS.md** - Windows setup guide
 5. **src/cli.ts** - Main CLI implementation (lines 85-86: no spinner!)
-6. **src/agent.ts** - Core agent logic
-7. **src/tools/** - Tool implementations
+6. **src/agent.ts** - Core agent logic with plan mode support
+7. **src/plan-review.ts** - Plan review UI for operation confirmation
+8. **src/tools/** - Tool implementations (with requiresConfirmation flags)
 
 ## Debugging Tips
 
@@ -407,11 +423,13 @@ npm run build
 ```
 esnaad> /help
 esnaad> /history
+esnaad> /plan        # Check plan mode status
+esnaad> /plan off    # Disable confirmation prompts
 esnaad> /exit
 ```
 
 ---
 
-**Last Updated**: 2024 (Session with successful Windows loop fix)
+**Last Updated**: 2025-12-23 (Added Plan Mode & Edit Acceptance feature)
 **Branch**: claude/basic-coding-agent-1xb8N
 **Status**: Production Ready ✅

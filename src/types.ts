@@ -7,6 +7,7 @@ export interface Tool {
     required?: string[];
   };
   execute: (params: any) => Promise<string>;
+  requiresConfirmation?: boolean;
 }
 
 export interface Message {
@@ -24,6 +25,41 @@ export interface ToolCall {
     name: string;
     arguments: string;
   };
+}
+
+/**
+ * Represents a tool operation pending user approval
+ */
+export interface PendingOperation {
+  toolCallId: string;
+  toolName: string;
+  params: Record<string, any>;
+  displaySummary: string;
+}
+
+/**
+ * Result of the plan review process
+ */
+export type PlanReviewResult =
+  | { action: 'accept_all' }
+  | { action: 'reject_all' }
+  | { action: 'step_results'; results: StepResult[] };
+
+/**
+ * Result for individual step in step-by-step review
+ */
+export interface StepResult {
+  toolCallId: string;
+  action: 'accept' | 'reject' | 'edit';
+  editedParams?: Record<string, any>;
+}
+
+/**
+ * Configuration for plan mode behavior
+ */
+export interface PlanModeConfig {
+  enabled: boolean;
+  autoApproveReadOnly: boolean;
 }
 
 export interface AgentConfig {
