@@ -82,14 +82,13 @@ program
         }
 
         // Process user message
-        const spinner = ora('Processing...').start();
+        // Note: ora spinner breaks stdin on Windows, so we use simple text instead
+        console.log(chalk.yellow('Processing...'));
         try {
           const response = await agent.chat(input);
-          spinner.stop();
           console.log(chalk.blue('\n' + response + '\n'));
           console.log(chalk.gray('─'.repeat(60)));
         } catch (error: any) {
-          spinner.stop();
           console.error(chalk.red(`\nError: ${error.message}\n`));
           console.log(chalk.gray('─'.repeat(60)));
         } finally {

@@ -111,6 +111,7 @@ npm run dev          # Build and run
 1. **Ripgrep**: Not installed by default - need installation instructions
 2. **Home Directory**: `~/.esnaad/` needs proper Windows path resolution
 3. **Shell**: Bash commands might need CMD/PowerShell equivalents
+4. **Ora Spinner**: The `ora` spinner library breaks stdin on Windows, causing the CLI to exit after first response. **SOLUTION**: Removed spinner, use simple text output instead (see cli.ts line 85-86)
 
 ### Session Reminders
 - Always test on Windows or consider Windows compatibility
