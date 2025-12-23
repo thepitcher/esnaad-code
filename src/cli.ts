@@ -157,4 +157,5 @@ function handleCommand(
   rl.prompt();
 }
 
-program.parse();
+// Use parseAsync() for async actions
+await program.parseAsync();
