@@ -94,10 +94,14 @@ program
         }
       });
 
-      rl.on('close', async () => {
-        console.log(chalk.cyan('\n\nGoodbye! 👋\n'));
-        await mcpClient.close();
-        process.exit(0);
+      // Create a promise that resolves when readline closes
+      // This keeps the action function alive until user exits
+      await new Promise<void>((resolve) => {
+        rl.on('close', async () => {
+          console.log(chalk.cyan('\n\nGoodbye! 👋\n'));
+          await mcpClient.close();
+          resolve();
+        });
       });
 
     } catch (error: any) {
