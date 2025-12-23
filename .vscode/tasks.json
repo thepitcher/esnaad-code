@@ -1,0 +1,37 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "build",
+      "group": "build",
+      "problemMatcher": ["$tsc"],
+      "label": "npm: build",
+      "detail": "tsc"
+    },
+    {
+      "type": "npm",
+      "script": "build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$tsc"],
+      "label": "npm: build (default)",
+      "detail": "tsc"
+    },
+    {
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "build"],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": ["$tsc"],
+      "label": "Build and Watch",
+      "detail": "Build TypeScript in watch mode"
+    }
+  ]
+}
