@@ -14,14 +14,14 @@ import { MCPClient } from './mcp/client.js';
 const program = new Command();
 
 program
-  .name('esnaad')
-  .description('Esnaad Code - AI coding assistant with OpenAI')
+  .name('esnaad-debug')
+  .description('Esnaad Code - Debug version')
   .version('1.0.0')
   .option('-m, --model <model>', 'OpenAI model to use')
   .option('-d, --directory <path>', 'Working directory', process.cwd())
   .action(async (options) => {
     try {
-      console.log(chalk.cyan.bold('\n🚀 Esnaad Code - AI Coding Assistant\n'));
+      console.log(chalk.cyan.bold('\n🚀 Esnaad Code - Debug Version\n'));
 
       // Load configuration
       const config = loadConfig();
@@ -53,13 +53,31 @@ program
         input: process.stdin,
         output: process.stdout,
         prompt: chalk.green('esnaad> '),
-        terminal: true  // Explicitly enable terminal mode for Windows
+        terminal: true
       });
 
       console.log(chalk.yellow('Type your request or /help for commands'));
       console.log(chalk.gray('Press Ctrl+C or type /exit to quit\n'));
 
+      console.log(chalk.magenta('[DEBUG] Readline interface created'));
+      console.log(chalk.magenta('[DEBUG] stdin.isTTY:', process.stdin.isTTY));
+      console.log(chalk.magenta('[DEBUG] stdout.isTTY:', process.stdout.isTTY));
+
+      // Monitor stdin close
+      process.stdin.on('end', () => {
+        console.log(chalk.red('\n[DEBUG] stdin END event fired!'));
+      });
+
+      process.stdin.on('close', () => {
+        console.log(chalk.red('\n[DEBUG] stdin CLOSE event fired!'));
+      });
+
+      rl.on('close', () => {
+        console.log(chalk.red('\n[DEBUG] readline CLOSE event fired!'));
+      });
+
       rl.prompt();
+      console.log(chalk.magenta('[DEBUG] First prompt shown'));
 
       // Handle Ctrl+C gracefully
       rl.on('SIGINT', () => {
@@ -68,20 +86,29 @@ program
       });
 
       rl.on('line', async (line) => {
+        console.log(chalk.magenta(`[DEBUG] Received line: "${line}"`));
         const input = line.trim();
 
         if (!input) {
+          console.log(chalk.magenta('[DEBUG] Empty input, showing prompt again'));
           rl.prompt();
           return;
         }
 
         // Handle commands
         if (input.startsWith('/')) {
-          handleCommand(input, agent, rl, mcpClient);
+          if (input === '/exit' || input === '/quit') {
+            console.log(chalk.magenta('[DEBUG] Exit command received, closing readline'));
+            rl.close();
+            return;
+          }
+          console.log(chalk.blue('Command received (not implemented in debug mode)'));
+          rl.prompt();
           return;
         }
 
         // Process user message
+        console.log(chalk.magenta('[DEBUG] Processing message...'));
         const spinner = ora('Processing...').start();
         try {
           const response = await agent.chat(input);
@@ -93,20 +120,27 @@ program
           console.error(chalk.red(`\nError: ${error.message}\n`));
           console.log(chalk.gray('─'.repeat(60)));
         } finally {
+          console.log(chalk.magenta('[DEBUG] About to show prompt again'));
           // Always show prompt again to continue the loop
           rl.prompt();
+          console.log(chalk.magenta('[DEBUG] Prompt shown, waiting for next input'));
         }
       });
 
       // Create a promise that resolves when readline closes
       // This keeps the action function alive until user exits
+      console.log(chalk.magenta('[DEBUG] Setting up Promise to keep process alive'));
       await new Promise<void>((resolve) => {
         rl.on('close', async () => {
           console.log(chalk.cyan('\n\nGoodbye! 👋\n'));
+          console.log(chalk.magenta('[DEBUG] In close handler, cleaning up...'));
           await mcpClient.close();
+          console.log(chalk.magenta('[DEBUG] Resolving Promise...'));
           resolve();
         });
       });
+
+      console.log(chalk.magenta('[DEBUG] Promise resolved, exiting...'));
 
     } catch (error: any) {
       console.error(chalk.red(`Error: ${error.message}`));
