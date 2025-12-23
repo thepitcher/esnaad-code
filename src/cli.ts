@@ -52,9 +52,16 @@ program
         prompt: chalk.green('esnaad> ')
       });
 
-      console.log(chalk.yellow('Type your request or /help for commands\n'));
+      console.log(chalk.yellow('Type your request or /help for commands'));
+      console.log(chalk.gray('Press Ctrl+C or type /exit to quit\n'));
 
       rl.prompt();
+
+      // Handle Ctrl+C gracefully
+      rl.on('SIGINT', () => {
+        console.log(chalk.yellow('\n\nReceived Ctrl+C. Type /exit to quit or press Enter to continue.\n'));
+        rl.prompt();
+      });
 
       rl.on('line', async (line) => {
         const input = line.trim();
@@ -76,12 +83,15 @@ program
           const response = await agent.chat(input);
           spinner.stop();
           console.log(chalk.blue('\n' + response + '\n'));
+          console.log(chalk.gray('─'.repeat(60)));
         } catch (error: any) {
           spinner.stop();
           console.error(chalk.red(`\nError: ${error.message}\n`));
+          console.log(chalk.gray('─'.repeat(60)));
+        } finally {
+          // Always show prompt again to continue the loop
+          rl.prompt();
         }
-
-        rl.prompt();
       });
 
       rl.on('close', async () => {

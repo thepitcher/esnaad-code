@@ -84,19 +84,46 @@ npm start
 node dist/cli.js
 ```
 
-### Basic Commands
+### Interactive Loop
 
-Once in the interactive shell:
+Esnaad Code runs in a **continuous interactive loop**. You can ask multiple questions and perform multiple tasks in a single session:
 
 ```
-esnaad> help me create a new React component
+🚀 Esnaad Code - AI Coding Assistant
 
-esnaad> read the package.json file and tell me about dependencies
+Model: gpt-4-turbo-preview
+Working directory: /home/user/my-project
 
-esnaad> find all TypeScript files in the src directory
+Type your request or /help for commands
+Press Ctrl+C or type /exit to quit
 
-esnaad> search for "TODO" comments in the codebase
+esnaad> read package.json and tell me what dependencies we have
+[Agent reads file and responds...]
+────────────────────────────────────────────────────────────
+
+esnaad> create a new file called hello.ts with a simple function
+🔧 Executing: write
+[Agent creates file...]
+────────────────────────────────────────────────────────────
+
+esnaad> now read that file back to me
+🔧 Executing: read
+[Agent reads file...]
+────────────────────────────────────────────────────────────
+
+esnaad> find all .ts files
+🔧 Executing: glob
+[Agent finds files...]
+────────────────────────────────────────────────────────────
+
+esnaad> /exit
+Goodbye! 👋
 ```
+
+The loop continues until you:
+- Type `/exit` or `/quit`
+- Press Ctrl+D
+- Close the terminal
 
 ### CLI Commands
 
