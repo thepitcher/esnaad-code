@@ -2,16 +2,51 @@
 
 A powerful AI coding assistant with file manipulation, MCP support, and OpenAI integration. Similar to Claude Code but uses OpenAI's API.
 
+**🪟 Target Platform**: Windows (with cross-platform support)
+
 ## Features
 
 - **File Operations**: Read, write, and edit files with ease
 - **Code Search**: Find files and search code using glob patterns and grep
-- **Shell Execution**: Run bash commands directly from the agent
+- **Shell Execution**: Run commands directly from the agent (CMD/PowerShell on Windows, bash on Unix)
 - **MCP Support**: Connect to Model Context Protocol servers for extended functionality
 - **Interactive CLI**: Command-line interface for seamless interaction
 - **OpenAI Integration**: Powered by GPT-4 and other OpenAI models
+- **Windows-Optimized**: Designed to work seamlessly on Windows
+
+## Prerequisites
+
+### Required
+- **Node.js** v18+ ([Download](https://nodejs.org/))
+- **npm** (included with Node.js)
+- **OpenAI API Key** ([Get one here](https://platform.openai.com/))
+
+### Optional (Recommended for full functionality)
+- **ripgrep** - For powerful code search (grep tool)
+  - **Windows**: `choco install ripgrep` or `scoop install ripgrep`
+  - **macOS**: `brew install ripgrep`
+  - **Linux**: `sudo apt-get install ripgrep` or `sudo dnf install ripgrep`
 
 ## Installation
+
+### Windows (PowerShell)
+
+```powershell
+# Clone the repository
+git clone <repository-url>
+cd esnaad-code
+
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
+
+# Optional: Link globally to use 'esnaad' command anywhere
+npm link
+```
+
+### macOS/Linux (Bash)
 
 ```bash
 # Clone the repository
@@ -32,8 +67,16 @@ npm link
 
 ### 1. Set up OpenAI API Key
 
-Create a `.env` file in the project root:
+**Windows (PowerShell):**
+```powershell
+# Copy the example file
+copy .env.example .env
 
+# Edit .env in notepad
+notepad .env
+```
+
+**macOS/Linux (Bash):**
 ```bash
 cp .env.example .env
 ```
@@ -47,15 +90,18 @@ OPENAI_MODEL=gpt-4-turbo-preview
 
 ### 2. Configure MCP Servers (Optional)
 
-Create a config file at `~/.esnaad/config.json`:
+Create a config file:
+- **Windows**: `C:\Users\YourUsername\.esnaad\config.json`
+- **macOS/Linux**: `~/.esnaad/config.json`
 
+**Example (Windows):**
 ```json
 {
   "mcpServers": [
     {
       "name": "filesystem",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/directory"]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\YourUsername\\Projects"]
     },
     {
       "name": "github",
@@ -64,6 +110,19 @@ Create a config file at `~/.esnaad/config.json`:
       "env": {
         "GITHUB_TOKEN": "your-github-token"
       }
+    }
+  ]
+}
+```
+
+**Example (macOS/Linux):**
+```json
+{
+  "mcpServers": [
+    {
+      "name": "filesystem",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/projects"]
     }
   ]
 }
@@ -287,6 +346,12 @@ npm run dev
 
 Make sure you have a `.env` file with your OpenAI API key:
 
+**Windows (PowerShell):**
+```powershell
+echo "OPENAI_API_KEY=sk-your-key" > .env
+```
+
+**macOS/Linux (Bash):**
 ```bash
 echo "OPENAI_API_KEY=sk-your-key" > .env
 ```
@@ -295,23 +360,58 @@ echo "OPENAI_API_KEY=sk-your-key" > .env
 
 1. Check that the MCP server command is correct
 2. Verify the server is installed (`npx` will auto-install)
-3. Check the config file path: `~/.esnaad/config.json`
+3. Check the config file path:
+   - **Windows**: `C:\Users\YourUsername\.esnaad\config.json`
+   - **macOS/Linux**: `~/.esnaad/config.json`
 4. Look for error messages in the console
+5. On Windows, ensure Node.js is in your PATH
 
-### "Command not found: rg"
+### "Command not found: rg" or ripgrep errors
 
 The `grep` tool requires ripgrep. Install it:
 
-```bash
-# macOS
-brew install ripgrep
+**Windows:**
+```powershell
+# Using Chocolatey
+choco install ripgrep
 
+# Using Scoop
+scoop install ripgrep
+
+# Or download from: https://github.com/BurntSushi/ripgrep/releases
+```
+
+**macOS:**
+```bash
+brew install ripgrep
+```
+
+**Linux:**
+```bash
 # Ubuntu/Debian
 sudo apt-get install ripgrep
 
 # Fedora
 sudo dnf install ripgrep
 ```
+
+### Windows-Specific Issues
+
+**PowerShell execution policy:**
+If you get script execution errors, run:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+**Long path support:**
+Enable long paths in Windows if you encounter path length errors:
+```powershell
+# Run as Administrator
+New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+```
+
+**Node.js not found:**
+Make sure Node.js is in your PATH. Restart your terminal after installing Node.js.
 
 ## Contributing
 

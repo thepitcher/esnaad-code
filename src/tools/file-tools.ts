@@ -154,7 +154,7 @@ export const globTool: Tool = {
 
 export const grepTool: Tool = {
   name: 'grep',
-  description: 'Search for a pattern in files using ripgrep',
+  description: 'Search for a pattern in files using ripgrep (rg). On Windows: install via "choco install ripgrep" or "scoop install ripgrep"',
   inputSchema: {
     type: 'object',
     properties: {
@@ -190,7 +190,9 @@ export const grepTool: Tool = {
     output_mode?: string;
   }) => {
     try {
-      let cmd = 'rg';
+      // Use rg.exe on Windows if available
+      const isWindows = process.platform === 'win32';
+      let cmd = isWindows ? 'rg.exe' : 'rg';
 
       if (params.case_insensitive) cmd += ' -i';
 
@@ -224,6 +226,23 @@ export const grepTool: Tool = {
       if (error.status === 1) {
         return 'No matches found';
       }
+
+      // Provide helpful error message on Windows if ripgrep not found
+      if (error.message.includes('not found') || error.message.includes('not recognized')) {
+        const isWindows = process.platform === 'win32';
+        if (isWindows) {
+          return `Error: ripgrep (rg) not found. Please install it:\n` +
+                 `  • Using Chocolatey: choco install ripgrep\n` +
+                 `  • Using Scoop: scoop install ripgrep\n` +
+                 `  • Or download from: https://github.com/BurntSushi/ripgrep/releases`;
+        } else {
+          return `Error: ripgrep (rg) not found. Please install it:\n` +
+                 `  • macOS: brew install ripgrep\n` +
+                 `  • Ubuntu/Debian: sudo apt-get install ripgrep\n` +
+                 `  • Fedora: sudo dnf install ripgrep`;
+        }
+      }
+
       return `Error searching: ${error.message}`;
     }
   }
