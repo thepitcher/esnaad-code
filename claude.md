@@ -51,6 +51,23 @@ The CLI runs in a continuous loop using Node.js readline:
 - `rl.prompt()` is called after every response to continue the loop
 - Loop continues until `/exit`, `/quit`, or Ctrl+D
 
+**CRITICAL**: Two fixes required for the loop to work:
+1. **Promise in action** (lines 97-105 of cli.ts): Keeps the async action alive
+   ```typescript
+   await new Promise<void>((resolve) => {
+     rl.on('close', async () => {
+       await mcpClient.close();
+       resolve();
+     });
+   });
+   ```
+2. **parseAsync()** (line 161 of cli.ts): Commander.js must await the async action
+   ```typescript
+   await program.parseAsync();  // NOT program.parse()
+   ```
+
+Without both fixes, the program exits after the first response!
+
 #### Windows Compatibility Considerations
 1. **Grep Tool**: Uses `rg` (ripgrep) - needs to be installed on Windows or provide fallback
 2. **File Paths**: Should handle both Windows (`\`) and Unix (`/`) path separators
