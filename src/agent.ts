@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import https from 'https';
 import { Interface as ReadlineInterface } from 'readline';
-import { AgentConfig, Message, Tool, PendingOperation, PlanReviewResult, PlanModeConfig, RulesContext, MemoryContext } from './types.js';
+import { AgentConfig, Message, Tool, PendingOperation, PlanReviewResult, PlanModeConfig, RulesContext, MemoryContext, DebugConfig } from './types.js';
 import { builtinTools, convertToolToOpenAIFormat } from './tools/index.js';
 import { MCPClient } from './mcp/client.js';
 import { reviewPlan, formatOperationForDisplay } from './plan-review.js';
@@ -16,6 +16,7 @@ export class Agent {
   private readline?: ReadlineInterface;
   private rulesContext?: RulesContext;
   private memoryContext?: MemoryContext;
+  private debugConfig?: DebugConfig;
 
   constructor(
     config: AgentConfig,
@@ -23,7 +24,8 @@ export class Agent {
     planModeConfig?: PlanModeConfig,
     readline?: ReadlineInterface,
     rulesContext?: RulesContext,
-    memoryContext?: MemoryContext
+    memoryContext?: MemoryContext,
+    debugConfig?: DebugConfig
   ) {
     this.config = config;
     this.mcpClient = mcpClient;
@@ -31,6 +33,7 @@ export class Agent {
     this.readline = readline;
     this.rulesContext = rulesContext;
     this.memoryContext = memoryContext;
+    this.debugConfig = debugConfig;
 
     // Configure HTTPS agent for SSL certificate handling
     const httpsAgent = new https.Agent({
@@ -145,6 +148,12 @@ Examples of git tool usage:
     while (iterations < maxIterations) {
       iterations++;
 
+      // Log request messages in conversation debug mode
+      if (this.debugConfig?.type === 'conversation') {
+        console.log('\n\x1b[36m[CONVERSATION] Request messages:\x1b[0m');
+        console.log(JSON.stringify(this.messages, null, 2));
+      }
+
       const response = await this.openai.chat.completions.create({
         model: this.config.model,
         messages: this.messages as any,
@@ -153,6 +162,12 @@ Examples of git tool usage:
       });
 
       const message = response.choices[0].message;
+
+      // Log response message in conversation debug mode
+      if (this.debugConfig?.type === 'conversation') {
+        console.log('\n\x1b[36m[CONVERSATION] Response message:\x1b[0m');
+        console.log(JSON.stringify(message, null, 2));
+      }
 
       // Add assistant message
       this.messages.push({

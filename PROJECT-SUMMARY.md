@@ -68,12 +68,20 @@
    - Notes injected into system prompt on startup
    - Commands: `/remember`, `/memory`, `/memory clear`
 
-9. **Rules System** (NEW)
+9. **Rules System**
    - Global rules: `~/.esnaad/rules.md`
    - Project rules: `ESNAAD.md` in project root
    - Markdown format for easy editing
    - Rules merged and injected into agent's system prompt
    - Command: `/rules` to view loaded rules
+
+10. **Debug Logging System** (NEW)
+    - Two debug types: `standard` and `conversation`
+    - `standard` - Shows all existing debug logs (stdin state, readline events, etc.)
+    - `conversation` - Shows only messages sent to/received from OpenAI server
+    - Messages displayed in JSON format for easy inspection
+    - Useful for debugging API communication issues
+    - Usage: `esnaad-debug -t conversation` or `esnaad-debug --type conversation`
 
 ### Architecture
 
@@ -82,19 +90,20 @@ esnaad-code/
 ├── src/
 │   ├── agent.ts          # Core agent with OpenAI integration & tool calling
 │   ├── cli.ts            # Main interactive CLI (production)
-│   ├── cli-debug.ts      # Debug version with extensive logging
+│   ├── cli-debug.ts      # Debug version with type-filtered logging
 │   ├── config.ts         # Configuration management (.env + ~/.esnaad/config.json)
-│   ├── types.ts          # TypeScript type definitions
+│   ├── types.ts          # TypeScript type definitions (includes DebugType, DebugConfig)
 │   ├── plan-review.ts    # Plan mode UI for reviewing/approving operations
+│   ├── debug-logger.ts   # Debug logger with type filtering (NEW)
 │   ├── rules/
-│   │   └── rules-loader.ts  # Load global + project rules (NEW)
+│   │   └── rules-loader.ts  # Load global + project rules
 │   ├── memory/
-│   │   └── memory-manager.ts # Persistent project memory (NEW)
+│   │   └── memory-manager.ts # Persistent project memory
 │   ├── tools/
 │   │   ├── file-tools.ts # File operations (read, write, edit, glob, grep)
 │   │   ├── bash-tool.ts  # Shell command execution
 │   │   ├── git-tool.ts   # Git operations (status, diff, log, commit, push, etc.)
-│   │   ├── memory-tool.ts # memory_save tool for auto-saving context (NEW)
+│   │   ├── memory-tool.ts # memory_save tool for auto-saving context
 │   │   └── index.ts      # Tool registry and OpenAI format conversion
 │   └── mcp/
 │       └── client.ts     # MCP client for external tools
@@ -236,6 +245,68 @@ Base instructions (tools, usage examples)
 === END PROJECT CONTEXT ===
 ↓
 Current working directory: ...
+```
+
+## Debug Logging System Details
+
+### Debug Types
+1. **standard** (default) - Shows all existing debug logs:
+   - Readline interface events
+   - stdin/stdout TTY status
+   - stdin readable state
+   - Event lifecycle (close, end, SIGINT)
+   - Processing status
+
+2. **conversation** - Shows only API communication:
+   - Request messages array (before OpenAI API call)
+   - Response message object (after OpenAI API call)
+   - All messages in JSON format (system, user, assistant, tool)
+
+### How It Works
+1. **DebugLogger class** (`src/debug-logger.ts`):
+   - Accepts `DebugConfig` with `enabled` and `type` properties
+   - `standard(message)` - Only logs when type is 'standard'
+   - `conversation(label, data)` - Only logs when type is 'conversation'
+
+2. **Agent Integration** (`src/agent.ts`):
+   - Accepts optional `debugConfig` in constructor
+   - Logs `this.messages` array before `openai.chat.completions.create()`
+   - Logs `response.choices[0].message` after API response
+
+3. **CLI Integration** (`src/cli-debug.ts`):
+   - `-t, --type <type>` option (default: 'standard')
+   - Passes `debugConfig` to Agent constructor
+   - All existing debug logs use `debugLogger.standard()`
+
+### Example Output (conversation mode)
+```
+[CONVERSATION] Request messages:
+[
+  {
+    "role": "system",
+    "content": "You are Esnaad Code, an AI coding assistant..."
+  },
+  {
+    "role": "user",
+    "content": "read package.json"
+  }
+]
+
+[CONVERSATION] Response message:
+{
+  "role": "assistant",
+  "content": "",
+  "tool_calls": [
+    {
+      "id": "call_abc123",
+      "type": "function",
+      "function": {
+        "name": "read",
+        "arguments": "{\"file_path\": \"package.json\"}"
+      }
+    }
+  ]
+}
 ```
 
 ## Key Architectural Decisions
@@ -384,6 +455,7 @@ Key commits in order:
 - Plan mode with edit acceptance working
 - Persistent memory system working
 - Rules system (global + project) working
+- Debug logging system with type filtering working
 
 ✅ **Well Documented**
 - README.md - Main documentation
@@ -458,11 +530,13 @@ From claude.md:
 3. **README.md** - User-facing documentation
 4. **WINDOWS.md** - Windows setup guide
 5. **src/cli.ts** - Main CLI implementation (lines 85-86: no spinner!)
-6. **src/agent.ts** - Core agent logic with dynamic system prompt
-7. **src/plan-review.ts** - Plan review UI for operation confirmation
-8. **src/rules/rules-loader.ts** - Loads global + project rules
-9. **src/memory/memory-manager.ts** - Persistent project memory
-10. **src/tools/memory-tool.ts** - memory_save tool for auto-saving
+6. **src/cli-debug.ts** - Debug CLI with -t option for type filtering
+7. **src/agent.ts** - Core agent logic with dynamic system prompt and conversation logging
+8. **src/debug-logger.ts** - Debug logger with standard/conversation type filtering
+9. **src/plan-review.ts** - Plan review UI for operation confirmation
+10. **src/rules/rules-loader.ts** - Loads global + project rules
+11. **src/memory/memory-manager.ts** - Persistent project memory
+12. **src/tools/memory-tool.ts** - memory_save tool for auto-saving
 
 ## Debugging Tips
 
@@ -512,7 +586,9 @@ esnaad
 
 **Debug issues**:
 ```powershell
-esnaad-debug
+esnaad-debug                    # Standard debug (stdin/readline events)
+esnaad-debug -t conversation    # Conversation debug (API messages as JSON)
+esnaad-debug --type conversation
 ```
 
 **Rebuild after changes**:
@@ -548,6 +624,6 @@ esnaad> /rules       # Show loaded rules
 
 ---
 
-**Last Updated**: 2025-12-23 (Added Persistent Memory & Rules System)
+**Last Updated**: 2025-12-23 (Added Debug Logging System with type filtering)
 **Branch**: claude/basic-coding-agent-1xb8N
 **Status**: Production Ready ✅

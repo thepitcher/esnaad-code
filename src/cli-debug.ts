@@ -7,6 +7,8 @@ import ora from 'ora';
 import { loadConfig } from './config.js';
 import { Agent } from './agent.js';
 import { MCPClient } from './mcp/client.js';
+import { DebugType, DebugConfig } from './types.js';
+import { createDebugLogger, DebugLogger } from './debug-logger.js';
 
 // Wrap in async IIFE to avoid top-level await warning
 (async () => {
@@ -19,7 +21,12 @@ program
   .version('1.0.0')
   .option('-m, --model <model>', 'OpenAI model to use')
   .option('-d, --directory <path>', 'Working directory', process.cwd())
+  .option('-t, --type <type>', 'Debug type: standard (default) or conversation', 'standard')
   .action(async (options) => {
+    // Validate debug type
+    const debugType: DebugType = options.type === 'conversation' ? 'conversation' : 'standard';
+    const debugConfig: DebugConfig = { enabled: true, type: debugType };
+    const debugLogger = createDebugLogger(debugType, true);
     try {
       console.log(chalk.cyan.bold('\n🚀 Esnaad Code - Debug Version\n'));
 
@@ -35,7 +42,8 @@ program
       }
 
       console.log(chalk.gray(`Model: ${config.openai.model}`));
-      console.log(chalk.gray(`Working directory: ${process.cwd()}\n`));
+      console.log(chalk.gray(`Working directory: ${process.cwd()}`));
+      console.log(chalk.gray(`Debug type: ${debugType}\n`));
 
       // Initialize MCP client
       const mcpClient = new MCPClient();
@@ -45,8 +53,8 @@ program
         spinner.succeed('MCP servers connected');
       }
 
-      // Initialize agent
-      const agent = new Agent(config.openai, mcpClient);
+      // Initialize agent with debug config
+      const agent = new Agent(config.openai, mcpClient, undefined, undefined, undefined, undefined, debugConfig);
 
       // Create readline interface
       const rl = createInterface({
@@ -59,29 +67,29 @@ program
       console.log(chalk.yellow('Type your request or /help for commands'));
       console.log(chalk.gray('Press Ctrl+C or type /exit to quit\n'));
 
-      console.log(chalk.magenta('[DEBUG] Readline interface created'));
-      console.log(chalk.magenta('[DEBUG] stdin.isTTY:', process.stdin.isTTY));
-      console.log(chalk.magenta('[DEBUG] stdout.isTTY:', process.stdout.isTTY));
+      debugLogger.standard('Readline interface created');
+      debugLogger.standard(`stdin.isTTY: ${process.stdin.isTTY}`);
+      debugLogger.standard(`stdout.isTTY: ${process.stdout.isTTY}`);
 
       // Keep stdin in flowing mode (important for Windows)
       process.stdin.resume();
-      console.log(chalk.magenta('[DEBUG] Called stdin.resume()'));
+      debugLogger.standard('Called stdin.resume()');
 
       // Monitor stdin close
       process.stdin.on('end', () => {
-        console.log(chalk.red('\n[DEBUG] stdin END event fired!'));
+        debugLogger.standard('stdin END event fired!');
       });
 
       process.stdin.on('close', () => {
-        console.log(chalk.red('\n[DEBUG] stdin CLOSE event fired!'));
+        debugLogger.standard('stdin CLOSE event fired!');
       });
 
       rl.on('close', () => {
-        console.log(chalk.red('\n[DEBUG] readline CLOSE event fired!'));
+        debugLogger.standard('readline CLOSE event fired!');
       });
 
       rl.prompt();
-      console.log(chalk.magenta('[DEBUG] First prompt shown'));
+      debugLogger.standard('First prompt shown');
 
       // Handle Ctrl+C gracefully
       rl.on('SIGINT', () => {
@@ -90,11 +98,11 @@ program
       });
 
       rl.on('line', async (line) => {
-        console.log(chalk.magenta(`[DEBUG] Received line: "${line}"`));
+        debugLogger.standard(`Received line: "${line}"`);
         const input = line.trim();
 
         if (!input) {
-          console.log(chalk.magenta('[DEBUG] Empty input, showing prompt again'));
+          debugLogger.standard('Empty input, showing prompt again');
           rl.prompt();
           return;
         }
@@ -102,7 +110,7 @@ program
         // Handle commands
         if (input.startsWith('/')) {
           if (input === '/exit' || input === '/quit') {
-            console.log(chalk.magenta('[DEBUG] Exit command received, closing readline'));
+            debugLogger.standard('Exit command received, closing readline');
             rl.close();
             return;
           }
@@ -112,50 +120,50 @@ program
         }
 
         // Process user message
-        console.log(chalk.magenta('[DEBUG] Processing message...'));
+        debugLogger.standard('Processing message...');
         // NO SPINNER - testing if ora breaks stdin on Windows
         console.log(chalk.yellow('Processing (no spinner)...'));
         try {
           const response = await agent.chat(input);
-          console.log(chalk.magenta('[DEBUG] Got response, displaying...'));
+          debugLogger.standard('Got response, displaying...');
           console.log(chalk.blue('\n' + response + '\n'));
           console.log(chalk.gray('─'.repeat(60)));
         } catch (error: any) {
           console.error(chalk.red(`\nError: ${error.message}\n`));
           console.log(chalk.gray('─'.repeat(60)));
         } finally {
-          console.log(chalk.magenta('[DEBUG] About to show prompt again'));
+          debugLogger.standard('About to show prompt again');
 
           // Check stdin state before prompting
-          console.log(chalk.magenta('[DEBUG] stdin.readable:', process.stdin.readable));
-          console.log(chalk.magenta('[DEBUG] stdin.readableEnded:', process.stdin.readableEnded));
-          console.log(chalk.magenta('[DEBUG] stdin.destroyed:', process.stdin.destroyed));
+          debugLogger.standard(`stdin.readable: ${process.stdin.readable}`);
+          debugLogger.standard(`stdin.readableEnded: ${process.stdin.readableEnded}`);
+          debugLogger.standard(`stdin.destroyed: ${process.stdin.destroyed}`);
 
           // Always show prompt again to continue the loop
           rl.prompt();
-          console.log(chalk.magenta('[DEBUG] Prompt shown, waiting for next input'));
+          debugLogger.standard('Prompt shown, waiting for next input');
 
           // Force a pause to keep stdin active
           setImmediate(() => {
-            console.log(chalk.magenta('[DEBUG] setImmediate callback executed'));
+            debugLogger.standard('setImmediate callback executed');
           });
         }
       });
 
       // Create a promise that resolves when readline closes
       // This keeps the action function alive until user exits
-      console.log(chalk.magenta('[DEBUG] Setting up Promise to keep process alive'));
+      debugLogger.standard('Setting up Promise to keep process alive');
       await new Promise<void>((resolve) => {
         rl.on('close', async () => {
           console.log(chalk.cyan('\n\nGoodbye! 👋\n'));
-          console.log(chalk.magenta('[DEBUG] In close handler, cleaning up...'));
+          debugLogger.standard('In close handler, cleaning up...');
           await mcpClient.close();
-          console.log(chalk.magenta('[DEBUG] Resolving Promise...'));
+          debugLogger.standard('Resolving Promise...');
           resolve();
         });
       });
 
-      console.log(chalk.magenta('[DEBUG] Promise resolved, exiting...'));
+      debugLogger.standard('Promise resolved, exiting...');
 
     } catch (error: any) {
       console.error(chalk.red(`Error: ${error.message}`));

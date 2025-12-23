@@ -2,9 +2,7 @@
   "permissions": {
     "allow": [
       "Bash(npm run build:*)",
-      "Bash(npx tsc)",
-      "Bash(npm install)",
-      "Bash(dir \"%USERPROFILE%\\\\.esnaad\"\" 2>nul || echo \"Config directory does not exist \")"
+      "Bash(node dist/cli-debug.js:*)"
     ]
   }
 }

@@ -1,3 +1,16 @@
+/**
+ * Debug output types for esnaad-debug
+ */
+export type DebugType = 'standard' | 'conversation';
+
+/**
+ * Configuration for debug logging
+ */
+export interface DebugConfig {
+  enabled: boolean;
+  type: DebugType;
+}
+
 export interface Tool {
   name: string;
   description: string;
