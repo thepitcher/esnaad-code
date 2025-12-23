@@ -3,6 +3,7 @@ import { readTool, writeTool, editTool, globTool, grepTool } from './file-tools.
 import { bashTool } from './bash-tool.js';
 import { gitTools } from './git-tool.js';
 import { todoWriteTool } from './todo-tool.js';
+import { memorySaveTool } from './memory-tool.js';
 
 export const builtinTools: Tool[] = [
   readTool,
@@ -12,7 +13,8 @@ export const builtinTools: Tool[] = [
   grepTool,
   bashTool,
   ...gitTools,  // Add all 9 git tools
-  todoWriteTool
+  todoWriteTool,
+  memorySaveTool
 ];
 
 export function convertToolToOpenAIFormat(tool: Tool) {

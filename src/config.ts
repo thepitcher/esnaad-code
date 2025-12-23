@@ -1,8 +1,9 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { createHash } from 'crypto';
 import dotenv from 'dotenv';
-import { Config } from './types.js';
+import { Config, EsnaadPaths } from './types.js';
 
 dotenv.config();
 
@@ -34,4 +35,26 @@ export function loadConfig(): Config {
     },
     mcpServers
   };
+}
+
+/**
+ * Get standard paths for Esnaad configuration and storage
+ */
+export function getEsnaadPaths(): EsnaadPaths {
+  const baseDir = join(homedir(), '.esnaad');
+  return {
+    globalRulesPath: join(baseDir, 'rules.md'),
+    memoryBasePath: join(baseDir, 'memory'),
+    configPath: join(baseDir, 'config.json')
+  };
+}
+
+/**
+ * Compute a consistent hash for a project path
+ * Normalizes paths across Windows/Unix for consistent hashing
+ */
+export function getProjectHash(projectPath: string): string {
+  // Normalize path for consistent hashing across Windows/Unix
+  const normalized = projectPath.replace(/\\/g, '/').toLowerCase();
+  return createHash('md5').update(normalized).digest('hex').substring(0, 12);
 }

@@ -50,7 +50,7 @@
    - Continuous loop that runs until user exits
    - Works correctly on Windows (after fixing critical bugs)
 
-7. **Plan Mode & Edit Acceptance** (NEW)
+7. **Plan Mode & Edit Acceptance**
    - User confirmation required for destructive operations
    - Read-only tools auto-execute (read, glob, grep, git_status, git_diff, git_log)
    - Destructive tools require approval (write, edit, bash, git_add, git_commit, git_push, git_pull, git_branch, git_checkout)
@@ -59,6 +59,21 @@
      - **n** - Reject all operations
      - **s** - Step-by-step review with parameter editing
    - Toggle with `/plan on` and `/plan off` commands
+
+8. **Persistent Memory** (NEW)
+   - Project context/notes stored per-project
+   - Storage: `~/.esnaad/memory/<project-hash>/notes.md`
+   - Auto-save via `memory_save` tool
+   - Manual save with `/remember <note>` command
+   - Notes injected into system prompt on startup
+   - Commands: `/remember`, `/memory`, `/memory clear`
+
+9. **Rules System** (NEW)
+   - Global rules: `~/.esnaad/rules.md`
+   - Project rules: `ESNAAD.md` in project root
+   - Markdown format for easy editing
+   - Rules merged and injected into agent's system prompt
+   - Command: `/rules` to view loaded rules
 
 ### Architecture
 
@@ -70,11 +85,16 @@ esnaad-code/
 │   ├── cli-debug.ts      # Debug version with extensive logging
 │   ├── config.ts         # Configuration management (.env + ~/.esnaad/config.json)
 │   ├── types.ts          # TypeScript type definitions
-│   ├── plan-review.ts    # Plan mode UI for reviewing/approving operations (NEW)
+│   ├── plan-review.ts    # Plan mode UI for reviewing/approving operations
+│   ├── rules/
+│   │   └── rules-loader.ts  # Load global + project rules (NEW)
+│   ├── memory/
+│   │   └── memory-manager.ts # Persistent project memory (NEW)
 │   ├── tools/
 │   │   ├── file-tools.ts # File operations (read, write, edit, glob, grep)
 │   │   ├── bash-tool.ts  # Shell command execution
 │   │   ├── git-tool.ts   # Git operations (status, diff, log, commit, push, etc.)
+│   │   ├── memory-tool.ts # memory_save tool for auto-saving context (NEW)
 │   │   └── index.ts      # Tool registry and OpenAI format conversion
 │   └── mcp/
 │       └── client.ts     # MCP client for external tools
@@ -182,6 +202,42 @@ npm link
 - Environment: `.env` file in project root
 - MCP Servers: `C:\Users\YourUsername\.esnaad\config.json`
 
+## Memory & Rules System Details
+
+### How Memory Works
+1. **Project Hash**: Each project gets a unique hash based on its absolute path (normalized, lowercase, MD5 first 12 chars)
+2. **Startup**: `initMemoryManager(process.cwd())` loads existing notes from `~/.esnaad/memory/<hash>/notes.md`
+3. **Injection**: Notes are added to system prompt under `=== PROJECT CONTEXT ===`
+4. **Auto-Save**: Agent can call `memory_save` tool to store important facts
+5. **Manual Save**: User can use `/remember <note>` command
+6. **Storage Format**: Markdown list (`- note text` per line)
+
+### How Rules Work
+1. **Loading**: `loadRules(process.cwd())` reads both global and project rules
+2. **Global**: `~/.esnaad/rules.md` - applies to all projects
+3. **Project**: `ESNAAD.md` in project root - extends/overrides global
+4. **Merging**: Global rules shown first, then project rules
+5. **Injection**: Combined rules added to system prompt under `=== USER RULES ===`
+
+### System Prompt Structure
+```
+Base instructions (tools, usage examples)
+↓
+=== USER RULES === (if rules exist)
+## Global Rules
+...
+## Project Rules
+...
+=== END RULES ===
+↓
+=== PROJECT CONTEXT === (if memory exists)
+- note 1
+- note 2
+=== END PROJECT CONTEXT ===
+↓
+Current working directory: ...
+```
+
 ## Key Architectural Decisions
 
 ### 1. Why OpenAI Instead of Anthropic?
@@ -232,6 +288,10 @@ esnaad> /exit
 - `/plan` - Show plan mode status
 - `/plan on` - Enable plan mode (confirm destructive operations)
 - `/plan off` - Disable plan mode (auto-execute all)
+- `/remember <note>` - Save a note to project memory
+- `/memory` - Show stored notes for current project
+- `/memory clear` - Clear all notes for current project
+- `/rules` - Show loaded rules (global + project)
 - `/exit` or `/quit` - Exit Esnaad Code
 - Ctrl+D - Also exits
 
@@ -322,6 +382,8 @@ Key commits in order:
 - OpenAI integration working
 - Command system working
 - Plan mode with edit acceptance working
+- Persistent memory system working
+- Rules system (global + project) working
 
 ✅ **Well Documented**
 - README.md - Main documentation
@@ -347,16 +409,60 @@ From claude.md:
 - [ ] Executable packaging for Windows (.exe)
 - [ ] WSL detection and optimization
 
+## Storage Layout
+
+```
+~/.esnaad/
+├── config.json              # MCP server configuration
+├── rules.md                 # Global rules (user-created)
+└── memory/
+    └── <project-hash>/
+        └── notes.md         # Per-project memory notes
+
+<project-root>/
+└── ESNAAD.md                # Project-specific rules (user-created)
+```
+
+## Example File Formats
+
+### Global Rules (`~/.esnaad/rules.md`)
+```markdown
+# Global Rules
+- Always use TypeScript for new files
+- Run tests after changes
+- Write clear commit messages
+- Prefer async/await over callbacks
+```
+
+### Project Rules (`ESNAAD.md`)
+```markdown
+# Project Rules
+- Use repository pattern for data access
+- All API routes go in src/routes/
+- Target Node.js 18+
+- Use Jest for unit tests
+```
+
+### Memory Notes (`~/.esnaad/memory/<hash>/notes.md`)
+```markdown
+- Main entry point is src/index.ts
+- Database uses PostgreSQL with Prisma ORM
+- Authentication uses JWT tokens
+- Deploy command is: npm run deploy:prod
+```
+
 ## Important Files for Future Sessions
 
-1. **claude.md** - Technical context, known issues, architecture
+1. **CLAUDE.md** - Technical context, known issues, architecture
 2. **This file** - Complete history and journey
 3. **README.md** - User-facing documentation
 4. **WINDOWS.md** - Windows setup guide
 5. **src/cli.ts** - Main CLI implementation (lines 85-86: no spinner!)
-6. **src/agent.ts** - Core agent logic with plan mode support
+6. **src/agent.ts** - Core agent logic with dynamic system prompt
 7. **src/plan-review.ts** - Plan review UI for operation confirmation
-8. **src/tools/** - Tool implementations (with requiresConfirmation flags)
+8. **src/rules/rules-loader.ts** - Loads global + project rules
+9. **src/memory/memory-manager.ts** - Persistent project memory
+10. **src/tools/memory-tool.ts** - memory_save tool for auto-saving
 
 ## Debugging Tips
 
@@ -428,8 +534,20 @@ esnaad> /plan off    # Disable confirmation prompts
 esnaad> /exit
 ```
 
+**Memory commands**:
+```
+esnaad> /remember This project uses PostgreSQL
+esnaad> /memory      # Show all notes
+esnaad> /memory clear
+```
+
+**Rules commands**:
+```
+esnaad> /rules       # Show loaded rules
+```
+
 ---
 
-**Last Updated**: 2025-12-23 (Added Plan Mode & Edit Acceptance feature)
+**Last Updated**: 2025-12-23 (Added Persistent Memory & Rules System)
 **Branch**: claude/basic-coding-agent-1xb8N
 **Status**: Production Ready ✅

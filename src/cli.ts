@@ -7,6 +7,8 @@ import ora from 'ora';
 import { loadConfig } from './config.js';
 import { Agent } from './agent.js';
 import { MCPClient } from './mcp/client.js';
+import { loadRules } from './rules/rules-loader.js';
+import { initMemoryManager, getMemoryManager } from './memory/memory-manager.js';
 
 // Wrap in async IIFE to avoid top-level await warning
 (async () => {
@@ -45,6 +47,21 @@ program
         spinner.succeed('MCP servers connected');
       }
 
+      // Load rules (global + project)
+      const rulesContext = loadRules(process.cwd());
+      if (rulesContext.globalRules || rulesContext.projectRules) {
+        console.log(chalk.gray('Rules loaded:'));
+        if (rulesContext.globalRules) console.log(chalk.gray('  - Global (~/.esnaad/rules.md)'));
+        if (rulesContext.projectRules) console.log(chalk.gray('  - Project (ESNAAD.md)'));
+      }
+
+      // Initialize memory manager
+      const memoryManager = initMemoryManager(process.cwd());
+      const memoryContext = memoryManager.getContext();
+      if (memoryContext.notes.length > 0) {
+        console.log(chalk.gray(`Memory loaded: ${memoryContext.notes.length} note(s)`));
+      }
+
       // Create readline interface
       const rl = createInterface({
         input: process.stdin,
@@ -58,7 +75,9 @@ program
         config.openai,
         mcpClient,
         { enabled: true, autoApproveReadOnly: true },
-        rl
+        rl,
+        rulesContext,
+        memoryContext
       );
 
       console.log(chalk.yellow('Type your request or /help for commands'));
@@ -83,7 +102,7 @@ program
 
         // Handle commands
         if (input.startsWith('/')) {
-          await handleCommand(input, agent, rl, mcpClient);
+          await handleCommand(input, agent, rl, mcpClient, rulesContext);
           return;
         }
 
@@ -123,7 +142,8 @@ async function handleCommand(
   input: string,
   agent: Agent,
   rl: any,
-  mcpClient: MCPClient
+  mcpClient: MCPClient,
+  rulesContext: any
 ): Promise<void> {
   const parts = input.slice(1).split(' ');
   const command = parts[0];
@@ -131,14 +151,18 @@ async function handleCommand(
   switch (command) {
     case 'help':
       console.log(chalk.cyan('\nAvailable commands:'));
-      console.log(chalk.white('  /help        - Show this help message'));
-      console.log(chalk.white('  /clear       - Clear conversation history'));
-      console.log(chalk.white('  /history     - Show conversation history'));
-      console.log(chalk.white('  /plan        - Toggle or check plan mode status'));
-      console.log(chalk.white('  /todos       - Show current task list'));
-      console.log(chalk.white('  /todos clear - Clear the task list'));
-      console.log(chalk.white('  /exit        - Exit Esnaad Code'));
-      console.log(chalk.white('  /quit        - Exit Esnaad Code\n'));
+      console.log(chalk.white('  /help           - Show this help message'));
+      console.log(chalk.white('  /clear          - Clear conversation history'));
+      console.log(chalk.white('  /history        - Show conversation history'));
+      console.log(chalk.white('  /plan           - Toggle or check plan mode status'));
+      console.log(chalk.white('  /todos          - Show current task list'));
+      console.log(chalk.white('  /todos clear    - Clear the task list'));
+      console.log(chalk.white('  /remember <note>- Save a note to project memory'));
+      console.log(chalk.white('  /memory         - Show stored notes'));
+      console.log(chalk.white('  /memory clear   - Clear all notes'));
+      console.log(chalk.white('  /rules          - Show loaded rules'));
+      console.log(chalk.white('  /exit           - Exit Esnaad Code'));
+      console.log(chalk.white('  /quit           - Exit Esnaad Code\n'));
       break;
 
     case 'clear':
@@ -186,6 +210,63 @@ async function handleCommand(
           console.log('\n' + formatTodoList(todos) + '\n');
         }
       }
+      break;
+
+    case 'remember':
+      const note = parts.slice(1).join(' ');
+      if (!note) {
+        console.log(chalk.red('\nUsage: /remember <note>\n'));
+      } else {
+        const memManager = getMemoryManager();
+        if (memManager) {
+          memManager.addNote(note);
+          console.log(chalk.green('\n✓ Note saved to project memory\n'));
+        } else {
+          console.log(chalk.red('\nError: Memory manager not initialized\n'));
+        }
+      }
+      break;
+
+    case 'memory':
+      const memSubCmd = parts[1];
+      const memMgr = getMemoryManager();
+      if (memSubCmd === 'clear') {
+        if (memMgr) {
+          memMgr.clear();
+          console.log(chalk.yellow('\n✓ Project memory cleared\n'));
+        }
+      } else {
+        if (memMgr) {
+          const notes = memMgr.getNotes();
+          if (notes.length === 0) {
+            console.log(chalk.gray('\nNo notes stored for this project.\n'));
+          } else {
+            console.log(chalk.cyan('\nProject Memory:'));
+            notes.forEach((n, i) => console.log(chalk.white(`  ${i + 1}. ${n}`)));
+            console.log();
+          }
+        }
+      }
+      break;
+
+    case 'rules':
+      console.log(chalk.cyan('\nLoaded Rules:'));
+      if (rulesContext.globalRules) {
+        console.log(chalk.white('\nGlobal (~/.esnaad/rules.md):'));
+        console.log(chalk.gray(rulesContext.globalRules.substring(0, 500)));
+        if (rulesContext.globalRules.length > 500) console.log(chalk.gray('...'));
+      }
+      if (rulesContext.projectRules) {
+        console.log(chalk.white('\nProject (ESNAAD.md):'));
+        console.log(chalk.gray(rulesContext.projectRules.substring(0, 500)));
+        if (rulesContext.projectRules.length > 500) console.log(chalk.gray('...'));
+      }
+      if (!rulesContext.globalRules && !rulesContext.projectRules) {
+        console.log(chalk.gray('  No rules loaded.'));
+        console.log(chalk.gray('  Create ~/.esnaad/rules.md for global rules'));
+        console.log(chalk.gray('  Create ESNAAD.md in project root for project rules'));
+      }
+      console.log();
       break;
 
     case 'exit':

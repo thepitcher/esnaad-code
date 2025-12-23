@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import https from 'https';
 import { Interface as ReadlineInterface } from 'readline';
-import { AgentConfig, Message, Tool, PendingOperation, PlanReviewResult, PlanModeConfig } from './types.js';
+import { AgentConfig, Message, Tool, PendingOperation, PlanReviewResult, PlanModeConfig, RulesContext, MemoryContext } from './types.js';
 import { builtinTools, convertToolToOpenAIFormat } from './tools/index.js';
 import { MCPClient } from './mcp/client.js';
 import { reviewPlan, formatOperationForDisplay } from './plan-review.js';
@@ -14,17 +14,23 @@ export class Agent {
   private mcpClient: MCPClient;
   private planModeConfig: PlanModeConfig;
   private readline?: ReadlineInterface;
+  private rulesContext?: RulesContext;
+  private memoryContext?: MemoryContext;
 
   constructor(
     config: AgentConfig,
     mcpClient: MCPClient,
     planModeConfig?: PlanModeConfig,
-    readline?: ReadlineInterface
+    readline?: ReadlineInterface,
+    rulesContext?: RulesContext,
+    memoryContext?: MemoryContext
   ) {
     this.config = config;
     this.mcpClient = mcpClient;
     this.planModeConfig = planModeConfig || { enabled: true, autoApproveReadOnly: true };
     this.readline = readline;
+    this.rulesContext = rulesContext;
+    this.memoryContext = memoryContext;
 
     // Configure HTTPS agent for SSL certificate handling
     const httpsAgent = new https.Agent({
@@ -49,10 +55,21 @@ export class Agent {
       this.tools.set(tool.name, tool);
     }
 
-    // System message
+    // System message with dynamic rules and memory injection
     this.messages.push({
       role: 'system',
-      content: `You are Esnaad Code, an AI coding assistant that helps users with software development tasks.
+      content: this.buildSystemPrompt()
+    });
+  }
+
+  /**
+   * Build the system prompt with optional rules and memory injection
+   */
+  private buildSystemPrompt(): string {
+    const parts: string[] = [];
+
+    // Base system prompt
+    parts.push(`You are Esnaad Code, an AI coding assistant that helps users with software development tasks.
 
 You have access to various tools:
 
@@ -77,22 +94,43 @@ Git Operations (USE THESE for git operations, NOT bash):
 - git_branch: List, create, or delete branches
 - git_checkout: Switch branches or restore files
 
+Memory:
+- memory_save: Save important facts about this project to persistent memory
+
 When using tools:
 1. Always read files before editing them
 2. Use glob to find files when you don't know exact paths
 3. Use grep to search for code patterns
 4. For git operations, ALWAYS use git_* tools instead of bash
 5. Be thorough and complete tasks fully
+6. Use memory_save to remember important project facts for future sessions
 
 Examples of git tool usage:
 - "show git status" → use git_status
 - "what changed?" → use git_diff
 - "show recent commits" → use git_log
 - "commit changes" → use git_add then git_commit
-- "push to remote" → use git_push
+- "push to remote" → use git_push`);
 
-Current working directory: ${process.cwd()}`
-    });
+    // Inject rules if present
+    if (this.rulesContext?.combinedRules) {
+      parts.push('\n\n=== USER RULES ===');
+      parts.push('Follow these rules when working on this project:');
+      parts.push(this.rulesContext.combinedRules);
+      parts.push('=== END RULES ===');
+    }
+
+    // Inject memory if present
+    if (this.memoryContext?.notes && this.memoryContext.notes.length > 0) {
+      parts.push('\n\n=== PROJECT CONTEXT ===');
+      parts.push('Important information about this project:');
+      this.memoryContext.notes.forEach(note => parts.push(`- ${note}`));
+      parts.push('=== END PROJECT CONTEXT ===');
+    }
+
+    parts.push(`\n\nCurrent working directory: ${process.cwd()}`);
+
+    return parts.join('\n');
   }
 
   async chat(userMessage: string): Promise<string> {

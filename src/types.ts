@@ -81,3 +81,31 @@ export interface Config {
   openai: AgentConfig;
   mcpServers?: MCPServer[];
 }
+
+/**
+ * Loaded rules context for injection into system prompt
+ */
+export interface RulesContext {
+  globalRules: string | null;      // Content of ~/.esnaad/rules.md
+  projectRules: string | null;      // Content of ./ESNAAD.md
+  combinedRules: string;            // Merged rules for system prompt
+}
+
+/**
+ * Project memory context
+ */
+export interface MemoryContext {
+  projectId: string;               // Hash of project path
+  projectPath: string;             // Absolute project path
+  notes: string[];                 // List of stored notes
+  storagePath: string;             // Path to memory file
+}
+
+/**
+ * Standard paths for Esnaad configuration
+ */
+export interface EsnaadPaths {
+  globalRulesPath: string;         // ~/.esnaad/rules.md
+  memoryBasePath: string;          // ~/.esnaad/memory/
+  configPath: string;              // ~/.esnaad/config.json
+}

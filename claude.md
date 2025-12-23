@@ -23,6 +23,8 @@ Esnaad Code is a command-line AI coding assistant similar to Claude Code, but po
 4. **OpenAI Integration**: GPT-4, GPT-3.5, and compatible models
 5. **Continuous Loop**: Interactive REPL that runs until user exits
 6. **Plan Mode**: Confirmation required for destructive operations (write, edit, bash, git mutations)
+7. **Persistent Memory**: Project context/notes stored per-project, auto-save + manual
+8. **Rules System**: Global + project-level markdown rules injected into agent
 
 ### Technology Stack
 - **Language**: TypeScript/Node.js
@@ -39,10 +41,15 @@ src/
 ├── config.ts         # Configuration management
 ├── types.ts          # TypeScript definitions
 ├── plan-review.ts    # Plan mode UI for reviewing/approving operations
+├── rules/
+│   └── rules-loader.ts  # Load global + project rules
+├── memory/
+│   └── memory-manager.ts # Persistent project memory
 ├── tools/
 │   ├── file-tools.ts # Read, write, edit, glob, grep (w/ requiresConfirmation)
 │   ├── bash-tool.ts  # Shell command execution (w/ requiresConfirmation)
 │   ├── git-tool.ts   # Git operations (status, diff, log, commit, push, etc.)
+│   ├── memory-tool.ts # memory_save tool for auto-saving context
 │   └── index.ts      # Tool registry
 └── mcp/
     └── client.ts     # MCP client for external tools
@@ -105,6 +112,56 @@ The CLI includes a plan mode feature that requires user confirmation for destruc
 - **Environment**: `.env` file for OpenAI API key
 - **MCP Servers**: `~/.esnaad/config.json` for MCP server configuration
 - **API**: Supports custom OpenAI-compatible endpoints
+
+#### Persistent Memory System
+Memory stores project context/notes that persist across sessions:
+
+**Storage**: `~/.esnaad/memory/<project-hash>/notes.md`
+
+**How it works**:
+- Agent can auto-save facts using `memory_save` tool
+- User can manually save with `/remember <note>` command
+- Notes are injected into system prompt on startup
+- Each project has its own memory (based on path hash)
+
+**Commands**:
+- `/remember <note>` - Save a note to project memory
+- `/memory` - Show all stored notes
+- `/memory clear` - Clear all notes for current project
+
+#### Rules System
+Rules define instructions that the agent follows:
+
+**File Locations**:
+- Global rules: `~/.esnaad/rules.md` (applies to all projects)
+- Project rules: `ESNAAD.md` in project root (extends/overrides global)
+
+**Format**: Markdown files that users can edit directly
+
+**How it works**:
+- Rules are loaded at startup
+- Both global and project rules are merged
+- Injected into agent's system prompt
+- Project rules appear after global rules (can override)
+
+**Commands**:
+- `/rules` - Show loaded rules
+
+**Example `~/.esnaad/rules.md`**:
+```markdown
+# Global Rules
+- Always use TypeScript
+- Run tests after changes
+- Write clear commit messages
+```
+
+**Example `ESNAAD.md`**:
+```markdown
+# Project Rules
+- Use repository pattern for data access
+- All API routes go in src/routes/
+- Target Node.js 18+
+```
 
 ### Development Workflow
 ```bash
