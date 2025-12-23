@@ -8,6 +8,9 @@ import { loadConfig } from './config.js';
 import { Agent } from './agent.js';
 import { MCPClient } from './mcp/client.js';
 
+// Wrap in async IIFE to avoid top-level await warning
+(async () => {
+
 const program = new Command();
 
 program
@@ -159,3 +162,8 @@ function handleCommand(
 
 // Use parseAsync() for async actions
 await program.parseAsync();
+
+})().catch((error) => {
+  console.error(chalk.red(`Fatal error: ${error.message}`));
+  process.exit(1);
+});
