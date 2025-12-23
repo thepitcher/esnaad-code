@@ -4,6 +4,8 @@ A powerful AI coding assistant with file manipulation, MCP support, and OpenAI i
 
 **🪟 Target Platform**: Windows (with cross-platform support)
 
+> 📚 **New to this project?** Read [PROJECT-SUMMARY.md](PROJECT-SUMMARY.md) for complete project history, issues solved, and architectural decisions.
+
 ## Features
 
 - **File Operations**: Read, write, and edit files with ease

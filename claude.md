@@ -2,6 +2,8 @@
 
 ## Project: Esnaad Code - AI Coding Assistant
 
+**📋 For complete project history and detailed summary, see [PROJECT-SUMMARY.md](PROJECT-SUMMARY.md)**
+
 ### Target Environment
 **IMPORTANT: Target environment is Windows**
 
